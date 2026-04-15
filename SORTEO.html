@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dorados MU — Control de Necklace</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f4f0;
+      color: #1a1a18;
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #666; margin-bottom: 1.25rem; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+    .stat {
+      background: #fff;
+      border-radius: 10px;
+      border: 0.5px solid #ddd;
+      padding: 10px 14px;
+    }
+    .stat-label { font-size: 12px; color: #888; }
+    .stat-val { font-size: 22px; font-weight: 600; margin-top: 2px; }
+
+    .add-row { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .add-row input {
+      flex: 1; min-width: 160px;
+      padding: 8px 12px; border-radius: 8px;
+      border: 0.5px solid #ccc; font-size: 14px;
+      outline: none; background: #fff;
+    }
+    .add-row input:focus { border-color: #7F77DD; box-shadow: 0 0 0 3px #EEEDFE; }
+
+    button {
+      padding: 8px 14px; border-radius: 8px;
+      border: 0.5px solid #ccc; background: #fff;
+      font-size: 13px; cursor: pointer; color: #1a1a18;
+      transition: background .12s;
+    }
+    button:hover { background: #f0eff8; }
+    button:active { transform: scale(0.98); }
+    button.primary { border-color: #7F77DD; color: #3C3489; }
+    button.primary:hover { background: #EEEDFE; }
+    button.danger:hover { background: #FCEBEB; color: #A32D2D; border-color: #E24B4A; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 0.5px solid #ddd;
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+    th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: #888; padding: 9px 12px;
+      border-bottom: 0.5px solid #eee; white-space: nowrap;
+    }
+    td { padding: 10px 12px; border-bottom: 0.5px solid #eee; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafaf8; }
+
+    .col-name  { width: 20%; }
+    .col-est   { width: 18%; }
+    .col-inv   { width: 26%; }
+    .col-neck  { width: 12%; }
+    .col-acc   { width: 24%; }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+    }
+    .b-ok   { background: #E1F5EE; color: #085041; }
+    .b-wait { background: #FAECE7; color: #712B13; }
+
+    .dots { display: flex; gap: 5px; align-items: center; }
+    .dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1px solid #ccc; cursor: pointer; flex-shrink: 0;
+      transition: background .12s;
+    }
+    .dot.on  { background: #1D9E75; border-color: #0F6E56; }
+    .dot.off { background: #f0efe8; }
+    .dot.off:hover { background: #ddd; }
+    .dot.disabled { cursor: default; }
+
+    .inv-count { font-size: 12px; color: #999; margin-left: 5px; }
+
+    .neck-pill {
+      font-size: 11px; font-weight: 600;
+      background: #EEEDFE; color: #3C3489;
+      padding: 2px 8px; border-radius: 10px;
+    }
+
+    .btns { display: flex; gap: 5px; flex-wrap: wrap; }
+    .btn-sm { padding: 4px 9px; font-size: 12px; }
+
+    .empty { text-align: center; color: #aaa; padding: 2.5rem; font-size: 14px; }
+
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+    .saving { font-size: 12px; color: #aaa; opacity: 0; transition: opacity .3s; padding-top: 6px; }
+    .saving.show { opacity: 1; }
+
+    @media (max-width: 600px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .col-neck { display: none; }
+      th.col-neck { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="topbar">
+    <div>
+      <h1>Dorados MU — Control de Necklace</h1>
+      <div class="subtitle">Quien gana la caja necesita 4 invasiones antes de volver a participar</div>
+    </div>
+    <span class="saving" id="saving">Guardando...</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Jugadores</div><div class="stat-val" id="s-total">0</div></div>
+    <div class="stat"><div class="stat-label">Habilitados</div><div class="stat-val" id="s-ok">0</div></div>
+    <div class="stat"><div class="stat-label">En cooldown</div><div class="stat-val" id="s-wait">0</div></div>
+    <div class="stat"><div class="stat-label">Necklaces</div><div class="stat-val" id="s-neck">0</div></div>
+  </div>
+
+  <div class="add-row">
+    <input type="text" id="inp" placeholder="Nombre del jugador..." maxlength="30" />
+    <button class="primary" onclick="addPlayer()">+ Agregar jugador</button>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-name">Jugador</th>
+          <th class="col-est">Estado</th>
+          <th class="col-inv">Invasiones</th>
+          <th class="col-neck">Necklaces</th>
+          <th class="col-acc">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const REQUIRED = 4;
+  const KEY = 'mu_dorados_v1';
+  let players = [];
+  let saveTimer = null;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) players = JSON.parse(raw);
+    } catch(e) { players = []; }
+    render();
+  }
+
+  function save() {
+    clearTimeout(saveTimer);
+    const el = document.getElementById('saving');
+    el.classList.add('show');
+    saveTimer = setTimeout(() => {
+      localStorage.setItem(KEY, JSON.stringify(players));
+      el.classList.remove('show');
+    }, 500);
+  }
+
+  function addPlayer() {
+    const inp = document.getElementById('inp');
+    const name = inp.value.trim();
+    if (!name) return;
+    if (players.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+      inp.style.boxShadow = '0 0 0 3px #FCEBEB';
+      inp.style.borderColor = '#E24B4A';
+      setTimeout(() => { inp.style.boxShadow = ''; inp.style.borderColor = ''; }, 1500);
+      return;
+    }
+    players.push({ id: Date.now(), name, cooldown: false, invasions: 0, necklaces: 0 });
+    inp.value = '';
+    save(); render();
+  }
+
+  function toggleDot(id, idx) {
+    const p = players.find(x => x.id === id);
+    if (!p || !p.cooldown) return;
+    p.invasions = (p.invasions === idx + 1) ? idx : idx + 1;
+    if (p.invasions >= REQUIRED) { p.cooldown = false; p.invasions = REQUIRED; }
+    save(); render();
+  }
+
+  function giveNecklace(id) {
+    const p = players.find(x => x.id === id);
+    if (!p || p.cooldown) return;
+    p.necklaces++;
+    p.cooldown = true;
+    p.invasions = 0;
+    save(); render();
+  }
+
+  function removePlayer(id) {
+    if (!confirm('¿Eliminar este jugador?')) return;
+    players = players.filter(x => x.id !== id);
+    save(); render();
+  }
+
+  function render() {
+    const tbody = document.getElementById('tbody');
+    if (!players.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay jugadores. Agregalos arriba.</td></tr>';
+      updateStats(); return;
+    }
+    tbody.innerHTML = players.map(p => {
+      const badge = p.cooldown
+        ? `<span class="badge b-wait">Esperando</span>`
+        : `<span class="badge b-ok">Habilitado</span>`;
+      const dots = [0,1,2,3].map(i => {
+        const cls = i < p.invasions ? 'on' : 'off';
+        const dis = !p.cooldown ? ' disabled' : '';
+        return `<div class="dot ${cls}${dis}" onclick="toggleDot(${p.id},${i})"></div>`;
+      }).join('');
+      const neckStr = p.necklaces > 0
+        ? `<span class="neck-pill">${p.necklaces}x</span>`
+        : `<span style="color:#ccc">—</span>`;
+      const neckBtn = !p.cooldown
+        ? `<button class="btn-sm primary" onclick="giveNecklace(${p.id})">+ Necklace</button>`
+        : `<button class="btn-sm" disabled style="opacity:.4;cursor:default">+ Necklace</button>`;
+      return `<tr>
+        <td style="font-weight:600">${p.name}</td>
+        <td>${badge}</td>
+        <td><div class="dots">${dots}<span class="inv-count">${p.invasions}/${REQUIRED}</span></div></td>
+        <td>${neckStr}</td>
+        <td><div class="btns">${neckBtn}<button class="btn-sm danger" onclick="removePlayer(${p.id})">Quitar</button></div></td>
+      </tr>`;
+    }).join('');
+    updateStats();
+  }
+
+  function updateStats() {
+    document.getElementById('s-total').textContent = players.length;
+    document.getElementById('s-ok').textContent = players.filter(p => !p.cooldown).length;
+    document.getElementById('s-wait').textContent = players.filter(p => p.cooldown).length;
+    document.getElementById('s-neck').textContent = players.reduce((a,p) => a + p.necklaces, 0);
+  }
+
+  document.getElementById('inp').addEventListener('keydown', e => { if(e.key === 'Enter') addPlayer(); });
+  load();
+</script>
+</body>
+</html>
